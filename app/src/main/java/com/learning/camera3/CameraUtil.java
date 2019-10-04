@@ -1,6 +1,12 @@
 package com.learning.camera3;
 
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
+import android.graphics.Matrix;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -11,21 +17,33 @@ import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
+import android.media.ExifInterface;
 import android.media.Image;
 import android.media.ImageReader;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Environment;
+import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.Surface;
 import android.view.TextureView;
+import android.view.View;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
+import androidx.core.content.FileProvider;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.sql.Time;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 
 import static android.content.Context.CAMERA_SERVICE;
 
@@ -45,11 +63,24 @@ public class CameraUtil {
     private CaptureRequest takePhotoRequest;
     private ImageReader reader;
     private Size outputPhotoSize;
-    //private File imageFile;
+    private File imageFile;
+    private ImageButton btn_displayThumbnail;
     private BaseActivity activity;
 
     public CameraUtil(final BaseActivity activity, final TextureView textureView){
         this.activity = activity;
+        btn_displayThumbnail = ((MainActivity)activity).getBtn_displayThumbnail();
+        btn_displayThumbnail.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                Log.d(TAG,activity.getApplicationContext().getPackageName());
+                Uri photoURI = FileProvider.getUriForFile(activity,"com.learning.camera3.fileprovider",imageFile);
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                intent.setDataAndType(photoURI, "image/*");
+                activity.startActivity(intent);
+            }
+        });
         this.cameraManager = (CameraManager)activity.getSystemService(CAMERA_SERVICE);
         this.textureView = textureView;
         textureView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
@@ -131,12 +162,12 @@ public class CameraUtil {
                 Image image = reader.acquireLatestImage();//获取源数据
                 ByteBuffer buffer = image.getPlanes()[0].getBuffer();
                 byte[] bytes = new byte[buffer.capacity()];
-                File file = new File(Environment.getExternalStorageDirectory(), Math.random()+"pic.jpg");
+                imageFile = new File(Environment.getExternalStorageDirectory(),  new SimpleDateFormat("yyyyMMddhhmmss").format(new Date()) + ".jpg");
                 buffer.get(bytes);
-                try (FileOutputStream output = new FileOutputStream(file))
+                try (FileOutputStream output = new FileOutputStream(imageFile))
                 {
                     output.write(bytes);
-                    Toast.makeText(activity, "保存: " + file, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(activity, "保存: " + imageFile, Toast.LENGTH_SHORT).show();
                 }
                 catch (Exception e)
                 {
@@ -145,6 +176,7 @@ public class CameraUtil {
                 finally
                 {
                     image.close();
+                    showThumbnail(BitmapFactory.decodeFile(imageFile.getAbsolutePath()));
                 }
             }
 
@@ -176,6 +208,65 @@ public class CameraUtil {
 
     }
 
+    //显示照片缩略图
+    private void showThumbnail(Bitmap src){
+        Bitmap thumbnail = toThumbnail(src);
+        btn_displayThumbnail.setImageBitmap(thumbnail);
+        btn_displayThumbnail.setVisibility(View.VISIBLE);
+    }
+
+    //缩小拍出来的图片
+    private Bitmap toThumbnail(Bitmap src){
+        int width = src.getWidth();
+        int height = src.getHeight();
+        // 设置想要的大小
+        int newWidth = 250;
+        int newHeight = 250;
+        // 计算缩放比例
+        float scaleWidth = ((float) newWidth) / width;
+        float scaleHeight = ((float) newHeight) / height;
+        // 取得想要缩放的matrix参数
+        Matrix matrix = new Matrix();
+        matrix.postScale(scaleWidth, scaleHeight);
+        Bitmap thumbnail =  Bitmap.createBitmap(src, 0, 0, width, height, matrix, true);
+        //修正方向
+        //根据图片的filepath获取到一个ExifInterface的对象
+        ExifInterface exif = null;
+        try {
+            exif = new ExifInterface(imageFile.getAbsolutePath());
+        } catch (IOException e) {
+            e.printStackTrace();
+            exif = null;
+        }
+        int degree=0;
+        if (exif != null) {
+            // 读取图片中相机方向信息
+            int ori = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION,
+                    ExifInterface.ORIENTATION_UNDEFINED);
+            // 计算旋转角度
+            switch (ori) {
+                case ExifInterface.ORIENTATION_ROTATE_90:
+                    degree = 90;
+                    break;
+                case ExifInterface.ORIENTATION_ROTATE_180:
+                    degree = 180;
+                    break;
+                case ExifInterface.ORIENTATION_ROTATE_270:
+                    degree = 270;
+                    break;
+                default:
+                    degree = 0;
+                    break;
+            }
+        }
+
+        // 旋转图片
+        Matrix m = new Matrix();
+        m.postRotate(degree);
+        Bitmap thumbnail_fixed = Bitmap.createBitmap(thumbnail, 0, 0, thumbnail.getWidth(), thumbnail.getHeight(), m, true);
+        return thumbnail_fixed;
+    }
+
     class CaptureSessionCaptureCallbackImpl extends CameraCaptureSession.CaptureCallback{
         @Override
         public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
@@ -183,6 +274,8 @@ public class CameraUtil {
             preview();
         }
     }
+
+
 
     //开启后置摄像机
     public void openBackFacingCamera(String cameraId) throws SecurityException{

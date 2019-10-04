@@ -30,6 +30,12 @@ public class MainActivity extends BaseActivity {
     private TextureView tev_preview = null;
     private ImageButton btn_capture = null;
 
+    public ImageButton getBtn_displayThumbnail() {
+        return btn_displayThumbnail;
+    }
+
+    private ImageButton btn_displayThumbnail = null;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
@@ -57,6 +63,8 @@ public class MainActivity extends BaseActivity {
         //view
         tev_preview = (TextureView) this.findViewById(R.id.tev_preview);
         btn_capture = (ImageButton)this.findViewById(R.id.btn_capture);
+        btn_displayThumbnail = (ImageButton)this.findViewById(R.id.btn_displayThumbnail);
+        btn_displayThumbnail.setVisibility(View.INVISIBLE);
 
         btn_capture.setOnClickListener(new View.OnClickListener() {
             @Override
