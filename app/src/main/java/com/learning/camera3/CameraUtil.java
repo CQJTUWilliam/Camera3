@@ -14,8 +14,8 @@ import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
 import android.os.Environment;
-import android.util.Log;
 import android.util.Size;
+import android.util.SparseIntArray;
 import android.view.Surface;
 import android.view.TextureView;
 import android.widget.Toast;
@@ -23,10 +23,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
@@ -39,6 +36,7 @@ public class CameraUtil {
     private Surface previewSurface;
     private CameraDevice backFacingDevice;
     private String backFacingDeviceId;
+    private int sensorOrientation;
     private CameraCaptureSession previewSession;
     private CameraCaptureSession takePhotoSession;
     private CaptureRequest.Builder previewRequestBuilder;
@@ -80,6 +78,18 @@ public class CameraUtil {
 
     }
 
+    //纠正屏幕方向
+    private int getOrientation() {
+        SparseIntArray ORIENTATIONS = new SparseIntArray();
+        ORIENTATIONS.append(Surface.ROTATION_0, 90);
+        ORIENTATIONS.append(Surface.ROTATION_90, 0);
+        ORIENTATIONS.append(Surface.ROTATION_180, 270);
+        ORIENTATIONS.append(Surface.ROTATION_270, 180);
+        int rotation = activity.getWindowManager().getDefaultDisplay().getRotation();
+        return (ORIENTATIONS.get(rotation) + sensorOrientation + 270) % 360;
+    }
+
+
     public void preview(){
         //获取CameraDevice
         try {
@@ -98,6 +108,7 @@ public class CameraUtil {
 
                 if(cameraCharacteristics.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK){
                     backFacingDeviceId = cameraId;
+                    sensorOrientation = cameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
                 }
             }
         } catch (CameraAccessException e) {
@@ -148,6 +159,7 @@ public class CameraUtil {
                     takePhotoRequestBuilder = backFacingDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
                     takePhotoRequestBuilder.addTarget(reader.getSurface());
                     takePhotoRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+                    takePhotoRequestBuilder.set(CaptureRequest.JPEG_ORIENTATION,getOrientation());
                     takePhotoRequest = takePhotoRequestBuilder.build();
                     takePhotoSession.capture(takePhotoRequest,new CaptureSessionCaptureCallbackImpl(),null);
                 } catch (CameraAccessException e) {
@@ -189,6 +201,7 @@ public class CameraUtil {
             backFacingDevice = camera;
             try {
                 previewRequestBuilder = backFacingDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+                previewRequestBuilder.set(CaptureRequest.JPEG_ORIENTATION,getOrientation());
                 previewRequestBuilder.addTarget(previewSurface);
                 previewRequest = previewRequestBuilder.build();
                 createCaptureSession();

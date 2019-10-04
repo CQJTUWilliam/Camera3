@@ -2,23 +2,18 @@ package com.learning.camera3;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
 
 import android.Manifest;
-import android.app.ActivityManager;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
-import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
-import android.hardware.camera2.CameraManager;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
-import android.widget.Button;
+import android.widget.ImageButton;
 
 import org.w3c.dom.Text;
 
@@ -33,10 +28,11 @@ public class MainActivity extends BaseActivity {
 
     private CameraUtil camera = null;
     private TextureView tev_preview = null;
-    private Button btn_capture = null;
+    private ImageButton btn_capture = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         //初始化警告框
@@ -59,8 +55,8 @@ public class MainActivity extends BaseActivity {
         //检查权限
         checkAndRequestPermission();
         //view
-        tev_preview = this.findViewById(R.id.tev_preview);
-        btn_capture = this.findViewById(R.id.btn_capture);
+        tev_preview = (TextureView) this.findViewById(R.id.tev_preview);
+        btn_capture = (ImageButton)this.findViewById(R.id.btn_capture);
 
         btn_capture.setOnClickListener(new View.OnClickListener() {
             @Override
