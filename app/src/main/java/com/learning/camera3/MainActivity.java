@@ -15,8 +15,6 @@ import android.view.TextureView;
 import android.view.View;
 import android.widget.ImageButton;
 
-import org.w3c.dom.Text;
-
 public class MainActivity extends BaseActivity {
 
     private static final String TAG ="MainActivity";
@@ -71,7 +69,7 @@ public class MainActivity extends BaseActivity {
             public void onClick(View v) {
                 if(camera != null){
                     try {
-                        camera.takePicpure();
+                        camera.takePicture();
                     } catch (CameraAccessException e) {
                         e.printStackTrace();
                     }

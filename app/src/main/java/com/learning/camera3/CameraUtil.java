@@ -1,7 +1,5 @@
 package com.learning.camera3;
 
-import android.app.Activity;
-import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -17,11 +15,10 @@ import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
-import android.media.ExifInterface;
+import androidx.exifinterface.media.ExifInterface;
 import android.media.Image;
 import android.media.ImageReader;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Environment;
 import android.util.Log;
 import android.util.Size;
@@ -33,14 +30,12 @@ import android.widget.ImageButton;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
 import androidx.core.content.FileProvider;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.sql.Time;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
@@ -53,6 +48,7 @@ public class CameraUtil {
     private TextureView textureView;
     private Surface previewSurface;
     private CameraDevice backFacingDevice;
+    private CameraCharacteristics backFacingCharacteristic;
     private String backFacingDeviceId;
     private int sensorOrientation;
     private CameraCaptureSession previewSession;
@@ -127,17 +123,8 @@ public class CameraUtil {
             String[] cameraIdList =  cameraManager.getCameraIdList();
             for(String cameraId : cameraIdList){
                 CameraCharacteristics cameraCharacteristics = cameraManager.getCameraCharacteristics(cameraId);
-                //获取支持的最大输出尺寸
-                StreamConfigurationMap streamConfigurationMap = cameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-                Size[] sizes = streamConfigurationMap.getOutputSizes(ImageFormat.JPEG);
-                outputPhotoSize = sizes[0];
-                for (Size size : sizes){
-                    if(size.getHeight() > outputPhotoSize.getHeight()){
-                        outputPhotoSize  = size;
-                    }
-                }
-
                 if(cameraCharacteristics.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK){
+                    backFacingCharacteristic = cameraCharacteristics;
                     backFacingDeviceId = cameraId;
                     sensorOrientation = cameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
                 }
@@ -149,9 +136,22 @@ public class CameraUtil {
         openBackFacingCamera(backFacingDeviceId);
     }
 
-    public void takePicpure() throws CameraAccessException {
+    public void takePicture() throws CameraAccessException {
+
         if(backFacingDevice == null){
             return;
+        }
+
+        //获取支持的最大输出尺寸
+        StreamConfigurationMap streamConfigurationMap = backFacingCharacteristic.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+        Size[] sizes = streamConfigurationMap.getOutputSizes(ImageFormat.JPEG);
+        outputPhotoSize = sizes[0];
+        for (int i = 1;i<sizes.length;i++){
+            Size currentSize = sizes[i];
+            //Log.d(TAG,currentSize.getWidth()+"*"+currentSize.getHeight());
+            if(currentSize.getWidth() > outputPhotoSize.getWidth()){
+                outputPhotoSize  = currentSize;
+            }
         }
 
         reader = ImageReader.newInstance(outputPhotoSize.getWidth(), outputPhotoSize.getHeight(), ImageFormat.JPEG, 1);
@@ -263,8 +263,7 @@ public class CameraUtil {
         // 旋转图片
         Matrix m = new Matrix();
         m.postRotate(degree);
-        Bitmap thumbnail_fixed = Bitmap.createBitmap(thumbnail, 0, 0, thumbnail.getWidth(), thumbnail.getHeight(), m, true);
-        return thumbnail_fixed;
+        return Bitmap.createBitmap(thumbnail, 0, 0, thumbnail.getWidth(), thumbnail.getHeight(), m, true);
     }
 
     class CaptureSessionCaptureCallbackImpl extends CameraCaptureSession.CaptureCallback{
