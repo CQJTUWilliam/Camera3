@@ -1,2 +1,6 @@
 # Camera3
-A smple camera app for homework
+使用camera2接口编写的一个简单的相机。可以拍照，可以预览
+
+## 待添加功能
+* 手动聚焦
+* 调整输出图片质量
